@@ -2,10 +2,20 @@ package com.zshuyin.trips;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.repository.config.*;
-import org.springframework.data.mongodb.config.*;
-import com.mongodb.*;
+import org.springframework.data.mongodb.config.AbstractMongoConfiguration;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.mongodb.MongoClient;
+import com.zshuyin.trips.filter.HTTPBearerAuthorizeAttribute;
+import com.zshuyin.trips.jwt.Audience;
 
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
@@ -16,16 +26,35 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.context.annotation.Bean;
 
 @SpringBootApplication
+@EnableConfigurationProperties(Audience.class)
 public class TripsApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(TripsApplication.class, args);
 	}
+
+	@Bean
+	public FilterRegistrationBean jwtFilterRegistrationBean() {
+		FilterRegistrationBean registrationBean = new FilterRegistrationBean();
+		HTTPBearerAuthorizeAttribute httpBearerFilter = new HTTPBearerAuthorizeAttribute();
+		registrationBean.setFilter(httpBearerFilter);
+		List<String> urlPatterns = new ArrayList<String>();
+		urlPatterns.add("/Users");
+		urlPatterns.add("/trip");
+		registrationBean.setUrlPatterns(urlPatterns);
+		return registrationBean;
+	}
+
 }
 
 @Configuration
 @EnableMongoRepositories
-class MongoConfiguration extends AbstractMongoConfiguration {
+class SpringMongoConfig extends AbstractMongoConfiguration {
+
+	@Bean
+	public GridFsTemplate gridFsTemplate() throws Exception {
+		return new GridFsTemplate(mongoDbFactory(), mappingMongoConverter());
+	}
 
 	@Override
 	protected String getDatabaseName() {
@@ -42,6 +71,7 @@ class MongoConfiguration extends AbstractMongoConfiguration {
 		return "foo.bar.domain";
 	}
 }
+
 
 @Configuration
 class MyWebAppConfigurer implements WebMvcConfigurer {
@@ -65,10 +95,7 @@ class MyConfiguration {
 		return new WebMvcConfigurerAdapter() {
 			@Override
 			public void addCorsMappings(CorsRegistry registry) {
-				registry.addMapping("/**") 
-				.allowedHeaders("*")
-				.allowedMethods("*")
-				.allowedOrigins("*");
+				registry.addMapping("/**").allowedHeaders("*").allowedMethods("*").allowedOrigins("*");
 			}
 		};
 	}
