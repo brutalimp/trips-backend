@@ -3,6 +3,8 @@ package com.zshuyin.trips.controller;
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,7 +14,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSBuckets;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import com.mongodb.gridfs.GridFSDBFile;
 import com.zshuyin.trips.bean.Trip;
 import com.zshuyin.trips.bean.User;
 import com.zshuyin.trips.repository.TripRepository;
@@ -20,9 +28,11 @@ import com.zshuyin.trips.service.GridfsService;
 import com.zshuyin.trips.utils.Position;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.MongoDbFactory;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,6 +45,9 @@ public class TripController {
 
     @Autowired
     GridfsService gridfsService;
+
+    @Autowired
+    MongoDbFactory mongoDbFactory;
 
     @PostMapping("/trip")
     public ResponseEntity addTrip(HttpServletRequest request) {
@@ -56,7 +69,10 @@ public class TripController {
         String description = params.getParameter("description");
         String timestamp = String.valueOf(System.currentTimeMillis());
         trip.setImages(images);
-        trip.setPosition(new Position(longitude, latitude, address));
+
+        if (address != null && longitude != null && latitude != null) {
+            trip.setPosition(new Position(longitude, latitude, address));
+        }
         trip.setTimestamp(timestamp);
         trip.setUserId(user.getId());
         trip.setDescription(description);
@@ -73,32 +89,28 @@ public class TripController {
         return ResponseEntity.ok().body(trips);
     }
 
-    public static Map<String, Object> transBean2Map(Object obj) {
-
-        if (obj == null) {
-            return null;
-        }
-        Map<String, Object> map = new HashMap<String, Object>();
+    @GetMapping(value = "/image/{fileId}")
+    public void getImage(@PathVariable String fileId, HttpServletResponse response) {
+        GridFSFile file = gridfsService.get(fileId);
+        GridFsResource resource = new GridFsResource(file, getGridFs().openDownloadStream(file.getObjectId()));
+        byte[] buffer = new byte[1024];
         try {
-            BeanInfo beanInfo = Introspector.getBeanInfo(obj.getClass());
-            PropertyDescriptor[] propertyDescriptors = beanInfo.getPropertyDescriptors();
-            for (PropertyDescriptor property : propertyDescriptors) {
-                String key = property.getName();
-
-                // 过滤class属性
-                if (!key.equals("class")) {
-                    // 得到property对应的getter方法
-                    Method getter = property.getReadMethod();
-                    Object value = getter.invoke(obj);
-
-                    map.put(key, value);
-                }
-
+            InputStream input = resource.getInputStream();
+            OutputStream output = response.getOutputStream();
+            int bytesRead;
+            while ((bytesRead = input.read(buffer)) != -1) {
+                output.write(buffer, 0, bytesRead);
             }
-        } catch (Exception e) {
-            System.out.println("transBean2Map Error " + e);
+            output.flush();
+            output.close();
+        } catch (Exception ex) {
+
         }
-        return map;
+    }
+
+    private GridFSBucket getGridFs() {
+        MongoDatabase db = mongoDbFactory.getDb();
+        return GridFSBuckets.create(db);
     }
 
 }

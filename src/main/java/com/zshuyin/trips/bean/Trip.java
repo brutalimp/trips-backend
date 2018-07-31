@@ -30,6 +30,10 @@ public class Trip {
 
     private Position position;
 
+    private int likeCount;
+
+    private List<String> likeIds;
+
     public String getId() {
         return id;
     }
@@ -77,4 +81,48 @@ public class Trip {
     public void setPosition(Position position) {
         this.position = position;
     }
+
+    public int getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(int likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public void addLikeCount(String userId) {
+        this.likeCount ++;
+        this.addLikeId(userId);
+    }
+
+    public void removeLikeCount(String userId) {
+        this.likeCount --;
+    }
+
+    public List<String> getLikeIds() {
+        return this.likeIds;
+    }
+
+    public boolean addLikeId(String userId) {
+        for(String likeId: this.likeIds) {
+            if(likeId.equals(userId)) {
+                return false;
+            }
+        }
+        this.likeIds.add(userId);
+        this.likeCount ++;
+        return true;
+    }
+
+    public boolean removeLikeId(String userId) {
+        for(String likeId: this.likeIds) {
+            if(likeId.equals(userId)) {
+               this.likeIds.remove(likeId);
+               this.likeCount --;
+               return true;
+            }
+        }
+        return false;
+    }
+
 }

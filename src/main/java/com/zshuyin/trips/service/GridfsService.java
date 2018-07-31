@@ -1,11 +1,19 @@
 package com.zshuyin.trips.service;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
+
+import com.mongodb.async.client.gridfs.GridFSFindIterable;
 import com.mongodb.client.gridfs.model.GridFSFile;
+import com.mongodb.gridfs.GridFSDBFile;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.MongoDbFactory;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,9 +40,15 @@ public class GridfsService {
     }
 
     public GridFSFile get(String fileId) {
-         GridFSFile file =
-         gridFsTemplate.findOne(new Query().addCriteria(Criteria.where("filename").is(fileId)));
-         return file;
-         
+        // try {
+        //     GridFSFile fsFile =  gridFsTemplate.findOne(Query.query(Criteria.where("filename").is(fileId)));
+        //     GridFsResource resource =  gridFsTemplate.getResource(fsFile);
+        //     File file = resource.getFile();
+        //     OutputStream stream = new FileOutputStream(file);
+        //     return stream;
+        // } catch (Exception ex) {
+        //     throw new RuntimeException("System Exception while handling request");
+        // }
+        return gridFsTemplate.findOne(Query.query(Criteria.where("filename").is(fileId)));
     }
 }
